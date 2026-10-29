@@ -1,7 +1,8 @@
+import { readSavedModelKey } from './credentials.js';
 import { NorthmarkError } from './errors.js';
 import type { ModelConfig } from './types.js';
 
-export const DEFAULT_BASE_URL = 'https://api.genoventures.com/v1';
+export const DEFAULT_BASE_URL = 'https://mh.bycuvola.com/v1';
 export const DEFAULT_API_KEY = 'MHK-123';
 export const DEFAULT_MODEL = 'modelhitch/auto';
 export const DEFAULT_TIMEOUT_MS = 120_000;
@@ -52,7 +53,9 @@ export function displayUrl(raw: string): string {
 
 export function resolveModelConfig(flags: ModelFlags = {}, env: NodeJS.ProcessEnv = process.env): ModelConfig {
   const baseUrl = normalizeBaseUrl(first(flags.baseUrl, env.NORTHMARK_BASE_URL, DEFAULT_BASE_URL));
-  const apiKey = first(flags.apiKey, env.NORTHMARK_API_KEY, DEFAULT_API_KEY).trim();
+  const explicitKey = firstOptional(flags.apiKey, env.NORTHMARK_API_KEY);
+  const savedKey = !explicitKey && baseUrl === DEFAULT_BASE_URL ? readSavedModelKey() : undefined;
+  const apiKey = (explicitKey ?? savedKey ?? DEFAULT_API_KEY).trim();
   const model = first(flags.model, env.NORTHMARK_MODEL, DEFAULT_MODEL).trim();
   if (!apiKey) {
     throw new NorthmarkError('The API key is empty. Set NORTHMARK_API_KEY or pass --api-key.');

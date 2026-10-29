@@ -91,7 +91,7 @@ describe('northmark cli', () => {
     expect(help.output()).toContain('generate');
     expect(help.output()).toContain('product_brief.md');
     expect(help.output()).toContain('NORTHMARK_BASE_URL');
-    expect(help.output()).toContain('https://api.genoventures.com/v1');
+    expect(help.output()).toContain('https://mh.bycuvola.com/v1');
 
     const version = captureIo();
     expect(await main(['node', 'northmark', '--version'], version)).toBe(0);

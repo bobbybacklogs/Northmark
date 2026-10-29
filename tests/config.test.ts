@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readSavedModelKey } from '../src/credentials.js';
+
+vi.mock('../src/credentials.js', () => ({ readSavedModelKey: vi.fn() }));
+beforeEach(() => vi.mocked(readSavedModelKey).mockReset());
 import {
   DEFAULT_API_KEY,
   DEFAULT_BASE_URL,
@@ -15,6 +19,16 @@ describe('resolveModelConfig', () => {
     expect(config.apiKey).toBe(DEFAULT_API_KEY);
     expect(config.model).toBe(DEFAULT_MODEL);
     expect(config.timeoutMs).toBe(120_000);
+  });
+
+  it('uses the saved key only for the default endpoint and preserves explicit overrides', () => {
+    vi.mocked(readSavedModelKey).mockReturnValue('saved-test-key');
+    expect(resolveModelConfig({}, {}).apiKey).toBe('saved-test-key');
+    expect(resolveModelConfig({ apiKey: 'flag-key' }, {}).apiKey).toBe('flag-key');
+    expect(resolveModelConfig({}, { NORTHMARK_API_KEY: 'env-key' }).apiKey).toBe('env-key');
+    vi.mocked(readSavedModelKey).mockClear();
+    expect(resolveModelConfig({ baseUrl: 'https://example.test/v1' }, {}).apiKey).toBe(DEFAULT_API_KEY);
+    expect(readSavedModelKey).not.toHaveBeenCalled();
   });
 
   it('lets flags override env and env override defaults', () => {
@@ -58,11 +72,11 @@ describe('resolveModelConfig', () => {
 
 describe('completionsUrl', () => {
   it('appends the chat completions path once', () => {
-    expect(completionsUrl('https://api.genoventures.com/v1')).toBe(
-      'https://api.genoventures.com/v1/chat/completions',
+    expect(completionsUrl('https://mh.bycuvola.com/v1')).toBe(
+      'https://mh.bycuvola.com/v1/chat/completions',
     );
-    expect(completionsUrl('https://api.genoventures.com/v1/')).toBe(
-      'https://api.genoventures.com/v1/chat/completions',
+    expect(completionsUrl('https://mh.bycuvola.com/v1/')).toBe(
+      'https://mh.bycuvola.com/v1/chat/completions',
     );
     expect(completionsUrl('https://example.test/v1/chat/completions')).toBe(
       'https://example.test/v1/chat/completions',

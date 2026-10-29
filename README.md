@@ -107,11 +107,11 @@ Walks the project and prints the same safety and context summary. No model call,
 
 ## Model
 
-ModelHitch is an OpenAI-compatible chat completions API. Any API key string works on the default bridge. Bring another key or another server with flags or env vars. Flags win over env vars.
+ModelHitch is an OpenAI-compatible chat completions API. Set `NORTHMARK_API_KEY` to a valid ModelHitch access key. Bring another key or another server with flags or env vars. Flags win over env vars. On macOS, Northmark then checks Keychain for service `com.cuvola.northmark.modelhitch`, account `northmark`. The saved key is used only with the default `https://mh.bycuvola.com/v1` endpoint; custom endpoints require their own key.
 
 | Variable | Default |
 | --- | --- |
-| `NORTHMARK_BASE_URL` | `https://api.genoventures.com/v1` |
+| `NORTHMARK_BASE_URL` | `https://mh.bycuvola.com/v1` |
 | `NORTHMARK_API_KEY` | `MHK-123` |
 | `NORTHMARK_MODEL` | `modelhitch/auto` |
 | `NORTHMARK_TIMEOUT_MS` | `120000` |

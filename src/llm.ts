@@ -124,7 +124,7 @@ function httpError(status: number, body: string, baseUrl: string): NorthmarkErro
   }
   if (status === 404) {
     return new NorthmarkError(
-      `The chat completions endpoint was not found (404) at ${displayUrl(baseUrl)}. Check NORTHMARK_BASE_URL. It should be the API base (for example https://api.genoventures.com/v1), not the full completions path.`,
+      `The chat completions endpoint was not found (404) at ${displayUrl(baseUrl)}. Check NORTHMARK_BASE_URL. It should be the API base (for example https://mh.bycuvola.com/v1), not the full completions path.`,
     );
   }
   if (status === 429) {
