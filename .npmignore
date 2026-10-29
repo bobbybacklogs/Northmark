@@ -1,0 +1,11 @@
+src/
+tests/
+.github/
+coverage/
+*.tgz
+tsconfig.json
+tsconfig.typecheck.json
+vitest.config.ts
+eslint.config.js
+.DS_Store
+*.tsbuildinfo
