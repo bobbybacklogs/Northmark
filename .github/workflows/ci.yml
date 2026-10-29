@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm pack
+      - name: Install the packed CLI and smoke-test it
+        run: |
+          set -euo pipefail
+          prefix="$RUNNER_TEMP/northmark-prefix"
+          sample="$RUNNER_TEMP/sample-project"
+          mkdir -p "$sample/src"
+          printf '%s\n' '{"name":"sample","private":true,"dependencies":{"react":"18.3.1"}}' > "$sample/package.json"
+          printf '%s\n' 'export function App(){ return "hello"; }' > "$sample/src/App.tsx"
+          npm install -g --prefix "$prefix" ./northmark-*.tgz
+          "$prefix/bin/northmark" --help
+          "$prefix/bin/northmark" --version
+          "$prefix/bin/northmark" --dry-run --cwd "$sample"
