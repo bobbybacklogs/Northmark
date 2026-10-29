@@ -145,21 +145,22 @@ describe('generateDocs', () => {
     expect(replaced).not.toContain('original readme');
   });
 
-  it('keeps docs already written when a later model call fails', async () => {
+  it('writes nothing when a later model call fails', async () => {
     const cwd = await project();
+    await mkdir(path.join(cwd, 'docs'));
+    await writeFile(path.join(cwd, 'docs/README.md'), 'original readme\n');
     const { client } = fakeLlm('product_brief.md');
     await expect(generateDocs({
       cwd,
       docs: ['readme', 'product-brief'],
       outDir: 'docs',
-      force: false,
+      force: true,
       dryRun: false,
       maxBytes: 50_000,
       model,
       llm: client,
-    })).rejects.toThrow(/Wrote docs\/README.md/);
-    const readme = await readFile(path.join(cwd, 'docs/README.md'), 'utf8');
-    expect(readme).toContain('# README.md');
+    })).rejects.toThrow(/Nothing was written/);
+    expect(await readFile(path.join(cwd, 'docs/README.md'), 'utf8')).toBe('original readme\n');
     await expect(access(path.join(cwd, 'docs/product_brief.md'))).rejects.toThrow();
   });
 

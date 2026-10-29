@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -154,6 +154,42 @@ describe('northmark cli', () => {
 
     const unknown = captureIo();
     expect(await main(['node', 'northmark', 'nope'], unknown)).not.toBe(0);
+  });
+
+  it('does not save a non-completion 200 as docs', async () => {
+    const cwd = await sampleProject();
+    vi.stubGlobal('fetch', async () => new Response('<<<not-json-garbage>>>', {
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+    }));
+    const io = captureIo({ cwd, env: {} });
+    const code = await main(['node', 'northmark', 'generate', '--cwd', cwd], io);
+    expect(code).toBe(1);
+    expect(io.errorOutput()).toMatch(/not a chat completion/);
+    expect(io.output()).not.toContain('Wrote 4 files');
+    expect(io.output()).not.toContain('<<<not-json-garbage>>>');
+    await expect(access(path.join(cwd, 'docs'))).rejects.toThrow();
+  });
+
+  it('crawls a project through a symlinked --cwd', async () => {
+    const parent = await makeTempDir();
+    temps.push(parent);
+    const project = path.join(parent, 'project');
+    await mkdir(project, { recursive: true });
+    await writeTree(project, {
+      'src/app.ts': 'export const via = "SYMLINK_ROOT_TOKEN";\n',
+    });
+    await writeFile(path.join(parent, 'outside.txt'), 'OUTSIDE_STILL_HIDDEN\n');
+    await symlink(path.join(parent, 'outside.txt'), path.join(project, 'leak.txt'));
+    const link = path.join(parent, 'via-link');
+    await symlink(project, link);
+
+    const io = captureIo({ env: {} });
+    const code = await main(['node', 'northmark', 'crawl', '--cwd', link], io);
+    expect(code).toBe(0);
+    expect(io.output()).toContain('src/app.ts');
+    expect(io.output()).not.toMatch(/files listed\s+0/);
+    expect(io.output()).not.toContain('OUTSIDE_STILL_HIDDEN');
   });
 
   it('uses the interactive menu on a TTY and can cancel', async () => {

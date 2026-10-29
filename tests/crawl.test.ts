@@ -147,6 +147,29 @@ describe('crawlProject', () => {
     expect(result.visited).toBeGreaterThan(0);
   });
 
+  it('crawls a project when the root itself is a symlink', async () => {
+    const parent = await temp();
+    const project = path.join(parent, 'project');
+    await mkdir(project);
+    await writeTree(project, {
+      'src/app.ts': 'export const via = "SYMLINK_ROOT_TOKEN";\n',
+      'package.json': '{ "name": "linked" }\n',
+    });
+    await writeFile(path.join(parent, 'outside.txt'), 'OUTSIDE_STILL_HIDDEN\n');
+    await symlink(path.join(parent, 'outside.txt'), path.join(project, 'leak.txt'));
+    const link = path.join(parent, 'via-link');
+    await symlink(project, link);
+
+    const viaLink = await crawlProject(link);
+    const viaReal = await crawlProject(project);
+    const texts = viaLink.files.map((file) => file.text ?? '').join('\n');
+    expect(texts).toContain('SYMLINK_ROOT_TOKEN');
+    expect(texts).not.toContain('OUTSIDE_STILL_HIDDEN');
+    expect(viaLink.files.map((file) => file.path).sort()).toEqual(viaReal.files.map((file) => file.path).sort());
+    expect(viaLink.samples.symlink ?? []).toContain('leak.txt');
+    expect(viaLink.files).not.toHaveLength(0);
+  });
+
   it('skips a broken symlink instead of failing the crawl', async () => {
     const project = await temp();
     await writeTree(project, { 'src/app.ts': 'export const ok = true;\n' });

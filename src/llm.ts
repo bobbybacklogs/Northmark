@@ -73,13 +73,16 @@ function parseSuccess(raw: string, contentType: string): string {
   if (/^<!doctype html/i.test(trimmed) || /^<html/i.test(trimmed)) {
     throw new NorthmarkError('The model endpoint returned HTML instead of a chat completion. Check --base-url.');
   }
-  const looksJson = contentType.includes('json') || trimmed.startsWith('{') || trimmed.startsWith('[');
-  if (!looksJson) return trimmed;
   let payload: unknown;
   try {
     payload = JSON.parse(trimmed);
   } catch {
-    throw new NorthmarkError('The model endpoint returned a response that was not valid JSON.');
+    const hintedJson = contentType.includes('json') || trimmed.startsWith('{') || trimmed.startsWith('[');
+    throw new NorthmarkError(
+      hintedJson
+        ? 'The model endpoint returned a response that was not valid JSON.'
+        : 'The model endpoint returned a response that was not a chat completion.',
+    );
   }
   return extractContent(payload);
 }

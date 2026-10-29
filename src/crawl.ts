@@ -39,7 +39,6 @@ interface Layer {
 }
 
 interface State {
-  rootLogical: string;
   rootReal: string;
   maxEntries: number;
   visited: number;
@@ -86,7 +85,6 @@ export async function crawlProject(cwd: string, options: CrawlOptions = {}): Pro
   }
 
   const state: State = {
-    rootLogical: root,
     rootReal,
     maxEntries: options.maxEntries ?? DEFAULT_MAX_ENTRIES,
     visited: 0,
@@ -99,7 +97,7 @@ export async function crawlProject(cwd: string, options: CrawlOptions = {}): Pro
     layers: [],
   };
 
-  await walk(root, '', state);
+  await walk(rootReal, '', state);
 
   const bodyBudget = Math.floor((options.maxBytes ?? 100_000) * 0.72);
   await readBodies(state, bodyBudget);
@@ -107,10 +105,10 @@ export async function crawlProject(cwd: string, options: CrawlOptions = {}): Pro
   const files = [...state.files].sort((a, b) => a.path.localeCompare(b.path));
 
   const readable = files.filter((file) => file.text !== undefined);
-  const rootName = path.basename(root) || 'project';
+  const rootName = path.basename(rootReal) || 'project';
 
   return {
-    root,
+    root: rootReal,
     rootName,
     files,
     assets: state.assets,
@@ -342,15 +340,23 @@ async function readBodies(state: State, bodyBudget: number): Promise<void> {
 
   for (const file of ranked) {
     if (used >= bodyBudget && file.score < 90) continue;
-    const abs = path.resolve(state.rootLogical, ...file.path.split('/'));
-    if (!isInsideRoot(state.rootReal, abs)) {
+    const abs = path.resolve(state.rootReal, ...file.path.split('/'));
+    let realAbs: string;
+    try {
+      realAbs = await realpath(abs);
+    } catch {
+      dropped.add(file.path);
+      record(state, 'unreadable', file.path);
+      continue;
+    }
+    if (!isInsideRoot(state.rootReal, realAbs)) {
       dropped.add(file.path);
       record(state, 'symlink', file.path);
       continue;
     }
     let text: string | null;
     try {
-      text = await readHead(abs, Math.min(READ_HEAD, file.bytes), file.bytes);
+      text = await readHead(realAbs, Math.min(READ_HEAD, file.bytes), file.bytes);
     } catch {
       dropped.add(file.path);
       record(state, 'unreadable', file.path);

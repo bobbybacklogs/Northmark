@@ -56,7 +56,7 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
 
   const client = options.llm ?? createModelClient(options.model);
   const specs = specsFor(options.docs);
-  const written: PlannedDoc[] = [];
+  const drafts: { doc: PlannedDoc; markdown: string }[] = [];
   for (let index = 0; index < planned.length; index += 1) {
     const doc = planned[index];
     const spec = specs[index];
@@ -72,18 +72,21 @@ export async function generateDocs(options: GenerateOptions): Promise<GenerateRe
     try {
       const prompt = promptFor(spec, context.text);
       const markdown = await client.complete(prompt);
-      await writePlannedDoc(doc, markdown);
+      drafts.push({ doc, markdown });
     } catch (error) {
-      const done = written.map((item) => item.relativePath);
-      const prefix = done.length > 0 ? `Wrote ${done.join(', ')}. ` : '';
       const reason = error instanceof NorthmarkError
         ? error.message
         : error instanceof Error
           ? error.message
           : 'The model request failed.';
-      throw new NorthmarkError(`${prefix}Stopped while drafting ${doc.relativePath}. ${reason}`);
+      throw new NorthmarkError(`Stopped while drafting ${doc.relativePath}. Nothing was written. ${reason}`);
     }
-    written.push(doc);
+  }
+
+  const written: PlannedDoc[] = [];
+  for (const draft of drafts) {
+    await writePlannedDoc(draft.doc, draft.markdown);
+    written.push(draft.doc);
   }
 
   return { ...base, written };

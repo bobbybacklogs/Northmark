@@ -88,6 +88,22 @@ describe('createModelClient', () => {
       .rejects.toThrow(/timed out/i);
   });
 
+  it('rejects a 200 that is not a chat completion', async () => {
+    vi.stubGlobal('fetch', async () => new Response('<<<not-json-garbage>>>', {
+      status: 200,
+      headers: { 'content-type': 'text/plain' },
+    }));
+    await expect(createModelClient(config).complete({ system: 's', user: 'u' }))
+      .rejects.toThrow(/not a chat completion/);
+  });
+
+  it('accepts a chat completion even when the content type is text/plain', async () => {
+    vi.stubGlobal('fetch', async () => new Response(JSON.stringify({
+      choices: [{ message: { content: '# Hello\n' } }],
+    }), { status: 200, headers: { 'content-type': 'text/plain' } }));
+    await expect(createModelClient(config).complete({ system: 's', user: 'u' })).resolves.toBe('# Hello\n');
+  });
+
   it('explains invalid JSON, empty choices, and HTML bodies', async () => {
     vi.stubGlobal('fetch', async () => new Response('not-json', {
       status: 200,
